@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Camiseta Deportiva 3D & Anatomía de Malla</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+        canvas { display: block; outline: none; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(51, 65, 85, 0.8); border-radius: 4px; }
+        .glass-panel { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .glow-active { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    </style>
+</head>
+<body class="h-full flex flex-col md:flex-row overflow-hidden select-none">
+
+    <!-- PANEL DE CONTROL IZQUIERDO -->
+    <aside class="w-full md:w-[420px] glass-panel flex flex-col z-20 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-slate-800">
+        <!-- Header -->
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/60">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-shirt text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+                        Camiseta 3D & Mesh Studio
+                    </h1>
+                    <p class="text-xs text-slate-400">Modelado, Anatomía 3D y Prompts</p>
+                </div>
+            </div>
+            <span class="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded-full border border-blue-500/20 font-semibold uppercase tracking-wider">Mesh 3D</span>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="flex border-b border-slate-800 bg-slate-900/40 text-xs font-medium">
+            <button id="tabAnatomy" class="flex-1 py-2.5 text-center text-blue-400 border-b-2 border-blue-500 transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-cubes"></i> Anatomía 3D
+            </button>
+            <button id="tabCustom" class="flex-1 py-2.5 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-palette"></i> Diseño & Estilo
+            </button>
+            <button id="tabUV" class="flex-1 py-2.5 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-map"></i> Mapeo UV
+            </button>
+        </div>
+
+        <!-- Scrollable Form Controls -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-5 custom-scrollbar">
+            
+            <!-- SECTION 1: ANATOMÍA DE LA MALLA 3D -->
+            <div id="sectionAnatomy" class="space-y-4">
+                <div class="bg-blue-950/40 border border-blue-800/40 rounded-xl p-3 text-xs space-y-2">
+                    <div class="flex items-center gap-2 font-bold text-blue-300">
+                        <i class="fa-solid fa-circle-info"></i> Pilares de Geometría Tridimensional
+                    </div>
+                    <p class="text-slate-300 leading-relaxed text-[11px]">
+                        Explora la estructura interna de la camiseta activando los componentes fundamentales de la malla poligonal.
+                    </p>
+                </div>
+
+                <!-- Toggles de Elementos -->
+                <div class="space-y-2">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-blue-400"></i> Capas de la Malla
+                    </h2>
+                    
+                    <!-- Vértices -->
+                    <label class="flex items-center justify-between p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-3 h-3 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></div>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">Vértices (Points)</span>
+                                <span class="text-[10px] text-slate-400">Puntos en el espacio (X, Y, Z)</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="chkVertices" class="w-4 h-4 accent-emerald-500 rounded cursor-pointer">
+                    </label>
+
+                    <!-- Aristas (Edges) -->
+                    <label class="flex items-center justify-between p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-3 h-3 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400"></div>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">Aristas (Edges / Wireframe)</span>
+                                <span class="text-[10px] text-slate-400">Líneas rectas que unen vértices</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="chkEdges" checked class="w-4 h-4 accent-cyan-500 rounded cursor-pointer">
+                    </label>
+
+                    <!-- Caras / Polígonos -->
+                    <label class="flex items-center justify-between p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-3 h-3 rounded-full bg-amber-400 shadow-sm shadow-amber-400"></div>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">Caras / Polígonos (Faces)</span>
+                                <span class="text-[10px] text-slate-400">Superficies poligonales trianguladas</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="chkFaces" checked class="w-4 h-4 accent-amber-500 rounded cursor-pointer">
+                    </label>
+
+                    <!-- Flat Shading / Low Poly -->
+                    <label class="flex items-center justify-between p-2.5 bg-slate-900/80 border border-slate-800 rounded-xl cursor-pointer hover:border-slate-700 transition">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-cube text-indigo-400"></i>
+                            <div>
+                                <span class="text-xs font-bold text-slate-200 block">Modo Low-Poly (Flat Shading)</span>
+                                <span class="text-[10px] text-slate-400">Visualiza facetas de caras planas</span>
+                            </div>
+                        </div>
+                        <input type="checkbox" id="chkFlatShading" checked class="w-4 h-4 accent-indigo-500 rounded cursor-pointer">
+                    </label>
+                </div>
+
+                <!-- Métricas de Malla -->
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-2">
+                    <h3 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Estadísticas de la Malla 3D</h3>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span class="text-xs text-slate-400 block">Vértices</span>
+                            <span id="statVertices" class="text-sm font-bold text-emerald-400">0</span>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span class="text-xs text-slate-400 block">Aristas</span>
+                            <span id="statEdges" class="text-sm font-bold text-cyan-400">0</span>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded-lg border border-slate-800">
+                            <span class="text-xs text-slate-400 block">Polígonos</span>
+                            <span id="statFaces" class="text-sm font-bold text-amber-400">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inspector de Vértices Interactivo -->
+                <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-crosshairs text-emerald-400"></i> Coordenadas (X, Y, Z)
+                        </h3>
+                        <span class="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded">Vértice Muestra</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400">Punto de referencia seleccionado en la superficie de la camiseta:</p>
+                    <div id="vertexCoordDisplay" class="font-mono text-xs bg-slate-950 p-2 rounded-lg border border-slate-800 text-emerald-300 flex justify-between">
+                        <span>X: 0.285</span>
+                        <span>Y: 0.420</span>
+                        <span>Z: 0.150</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 2: PERSONALIZACIÓN DE CAMISETA -->
+            <div id="sectionCustom" class="space-y-4 hidden">
+                <!-- Colores -->
+                <div class="space-y-3">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-palette text-blue-400"></i> Colores de la Camiseta
+                    </h2>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="space-y-1">
+                            <label class="text-[11px] text-slate-300 block">Principal</label>
+                            <input type="color" id="primaryColor" value="#1e3a8a" class="w-full h-9 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer p-1">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[11px] text-slate-300 block">Secundario</label>
+                            <input type="color" id="secondaryColor" value="#0284c7" class="w-full h-9 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer p-1">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[11px] text-slate-300 block">Detalles</label>
+                            <input type="color" id="accentColor" value="#38bdf8" class="w-full h-9 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer p-1">
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Personalización de Texto -->
+                <div class="space-y-3">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-id-card text-blue-400"></i> Tipografía y Datos
+                    </h2>
+                    <div class="grid grid-cols-3 gap-2.5">
+                        <div class="col-span-1 space-y-1">
+                            <label class="text-[11px] text-slate-300 block">Número</label>
+                            <input type="text" id="playerNumber" value="10" maxlength="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-center font-bold focus:border-blue-500 outline-none">
+                        </div>
+                        <div class="col-span-2 space-y-1">
+                            <label class="text-[11px] text-slate-300 block">Nombre Jugador</label>
+                            <input type="text" id="playerName" value="CAMPEON" maxlength="12" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm uppercase font-semibold focus:border-blue-500 outline-none">
+                        </div>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[11px] text-slate-300 block">Institución / Equipo</label>
+                        <input type="text" id="schoolName" value="COLEGIO DEPORTIVO" maxlength="22" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm uppercase focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Estilo y Patrones -->
+                <div class="space-y-3">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-shapes text-blue-400"></i> Estilo Geométrico
+                    </h2>
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-slate-300 block">Patrón de la Tela</label>
+                        <select id="patternStyle" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs focus:border-blue-500 outline-none">
+                            <option value="geometric">Hard-Surface Geométrico Low Poly</option>
+                            <option value="stripes">Franjas Deportivas Modernas</option>
+                            <option value="chevron">V-Chevron Velocidad</option>
+                            <option value="clean">Diseño Limpio y Minimalista</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-[11px] text-slate-300 block">Textura PBR de Tela</label>
+                        <select id="fabricTexture" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs focus:border-blue-500 outline-none">
+                            <option value="transpirable">Malla Transpirable Mate (Micro-mesh)</option>
+                            <option value="sintetico">Sintético Brillante / Satinado</option>
+                            <option value="tecnico">Tejido Técnico Combinado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: MAPEO UV -->
+            <div id="sectionUV" class="space-y-4 hidden">
+                <div class="bg-indigo-950/40 border border-indigo-800/40 rounded-xl p-3 text-xs space-y-2">
+                    <div class="flex items-center gap-2 font-bold text-indigo-300">
+                        <i class="fa-solid fa-map"></i> Proyección del Mapeo UV (2D)
+                    </div>
+                    <p class="text-slate-300 leading-relaxed text-[11px]">
+                        El **Mapeo UV** despliega la malla tridimensional sobre un plano 2D bidimensional (coordenadas U, V). Así es como la imagen y el diseño se envuelven sobre la camiseta 3D.
+                    </p>
+                </div>
+
+                <!-- Canvas Preview de Textura UV -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs text-slate-400">
+                        <span>Lienzo 2D Mapeado (1024x1024)</span>
+                        <span class="text-[10px] text-indigo-400 font-mono">UV (0,0) → (1,1)</span>
+                    </div>
+                    <div class="relative aspect-square w-full rounded-xl overflow-hidden border border-slate-700 bg-slate-900 shadow-inner">
+                        <canvas id="textureCanvas" width="1024" height="1024" class="w-full h-full object-contain"></canvas>
+                        <!-- UV Grid Overlay -->
+                        <div id="uvGridOverlay" class="absolute inset-0 pointer-events-none opacity-40 border border-indigo-400/30 flex flex-col justify-between p-1">
+                            <div class="flex justify-between text-[9px] font-mono text-indigo-300">
+                                <span>(0,1) Back</span>
+                                <span>(1,1) Sleeve</span>
+                            </div>
+                            <div class="flex justify-between text-[9px] font-mono text-indigo-300">
+                                <span>(0,0) Front</span>
+                                <span>(1,0) Collar</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="p-4 border-t border-slate-800 bg-slate-900/60 flex flex-col gap-2">
+            <button id="btnCopyPrompt" class="w-full bg-blue-600 hover:bg-blue-500 active:scale-[0.98] transition text-white py-2.5 rounded-xl font-medium text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+                <i class="fa-solid fa-copy"></i> Copiar Prompt Generado en Tiempo Real
+            </button>
+        </div>
+    </aside>
+
+    <!-- VISOR 3D PRINCIPAL -->
+    <main class="flex-1 relative bg-slate-950 flex flex-col h-1/2 md:h-full">
+        
+        <!-- Controls overlay top toolbar -->
+        <div class="absolute top-4 left-4 right-4 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div class="glass-panel px-3 py-1.5 rounded-xl text-xs flex items-center gap-2 pointer-events-auto shadow-md">
+                <i class="fa-solid fa-arrows-spin text-blue-400 animate-spin-slow"></i>
+                <span class="text-slate-300 hidden sm:inline">Girar: Clic izq | Zoom: Rueda | Mover: Clic der</span>
+                <span class="text-slate-300 sm:hidden">Interactúa en 3D</span>
+            </div>
+
+            <!-- Vistas Rápidas -->
+            <div class="flex items-center gap-1.5 pointer-events-auto">
+                <button id="btnViewFront" class="glass-panel hover:bg-slate-800 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium transition">
+                    <i class="fa-solid fa-eye"></i> Frontal
+                </button>
+                <button id="btnViewBack" class="glass-panel hover:bg-slate-800 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-medium transition">
+                    <i class="fa-solid fa-arrows-rotate"></i> Posterior
+                </button>
+                <button id="btnAutoRotate" class="glass-panel hover:bg-slate-800 text-blue-400 px-3 py-1.5 rounded-xl text-xs font-medium transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-pause" id="rotateIcon"></i> Rotar
+                </button>
+            </div>
+        </div>
+
+        <!-- Canvas Contenedor 3D -->
+        <div id="canvasContainer" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+        <!-- Float Badge Mesh Mode Overlay -->
+        <div id="badgeMeshInfo" class="absolute bottom-20 left-4 z-10 glass-panel px-3 py-2 rounded-xl text-xs space-y-1 hidden sm:block">
+            <div class="flex items-center gap-2 font-semibold text-blue-400">
+                <i class="fa-solid fa-cube"></i> Vista de Malleado 3D
+            </div>
+            <div class="text-[11px] text-slate-300 space-x-2">
+                <span>Vértices: <b id="badgeVerts" class="text-emerald-400">0</b></span> |
+                <span>Aristas: <b id="badgeEdges" class="text-cyan-400">0</b></span> |
+                <span>Polígonos: <b id="badgeFaces" class="text-amber-400">0</b></span>
+            </div>
+        </div>
+
+        <!-- Prompt Generado Live Output Bar -->
+        <div class="p-3 glass-panel border-t border-slate-800 m-3 rounded-2xl flex flex-col gap-1.5 z-10">
+            <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-slate-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> Prompt AI Generado en Tiempo Real:
+                </span>
+                <span id="copyToast" class="text-emerald-400 hidden font-medium text-[11px] animate-pulse">¡Copiado al portapapeles!</span>
+            </div>
+            <p id="promptTextOutput" class="text-xs font-mono text-slate-400 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800/80 overflow-x-auto whitespace-nowrap select-all custom-scrollbar">
+                Generando prompt de la camiseta...
+            </p>
+        </div>
+    </main>
+
+    <script>
+        // Variables globales
+        let scene, camera, renderer, controls;
+        let shirtGroup, jerseyMesh, wireframeMesh, vertexPointsMesh;
+        let ambientLight, keyLight, fillLight, backLight;
+        let textureCanvas, textureCtx, dynamicTexture;
+        let autoRotating = true;
+
+        // Inicialización al cargar la ventana
+        window.onload = function() {
+            initTextureCanvas();
+            init3DScene();
+            createShirtModel();
+            setupTabs();
+            setupEventListeners();
+            updateTexture();
+            updatePrompt();
+            animate();
+        };
+
+        function initTextureCanvas() {
+            textureCanvas = document.getElementById('textureCanvas');
+            textureCtx = textureCanvas.getContext('2d');
+            dynamicTexture = new THREE.CanvasTexture(textureCanvas);
+            dynamicTexture.anisotropy = 16;
+        }
+
+        function updateTexture() {
+            const primary = document.getElementById('primaryColor').value;
+            const secondary = document.getElementById('secondaryColor').value;
+            const accent = document.getElementById('accentColor').value;
+            const number = document.getElementById('playerNumber').value;
+            const name = document.getElementById('playerName').value;
+            const school = document.getElementById('schoolName').value;
+            const style = document.getElementById('patternStyle').value;
+
+            const w = textureCanvas.width;
+            const h = textureCanvas.height;
+
+            // Clear & Base Primary Color
+            textureCtx.fillStyle = primary;
+            textureCtx.fillRect(0, 0, w, h);
+
+            // Trama / Estilos Geométricos
+            textureCtx.fillStyle = secondary;
+            textureCtx.strokeStyle = accent;
+            textureCtx.lineWidth = 6;
+
+            if (style === 'geometric') {
+                // Hard-surface Low Poly geometric facets
+                for (let i = 0; i < 14; i++) {
+                    textureCtx.beginPath();
+                    textureCtx.moveTo((i * 80) % w, Math.random() * (h * 0.5));
+                    textureCtx.lineTo(Math.random() * w, Math.random() * (h * 0.5));
+                    textureCtx.lineTo(Math.random() * w, Math.random() * (h * 0.5));
+                    textureCtx.closePath();
+                    textureCtx.fillStyle = (i % 2 === 0) ? secondary : accent;
+                    textureCtx.globalAlpha = 0.3;
+                    textureCtx.fill();
+                    textureCtx.stroke();
+                }
+                textureCtx.globalAlpha = 1.0;
+            } else if (style === 'stripes') {
+                // Franjas deportivas
+                const stripeWidth = w / 10;
+                for (let i = 0; i < w; i += stripeWidth * 2) {
+                    textureCtx.fillRect(i, 0, stripeWidth, h * 0.55);
+                }
+            } else if (style === 'chevron') {
+                // Chevron V lines
+                textureCtx.fillStyle = secondary;
+                for (let y = 40; y < h * 0.5; y += 100) {
+                    textureCtx.beginPath();
+                    textureCtx.moveTo(0, y);
+                    textureCtx.lineTo(w / 2, y + 90);
+                    textureCtx.lineTo(w, y);
+                    textureCtx.lineTo(w, y + 35);
+                    textureCtx.lineTo(w / 2, y + 125);
+                    textureCtx.lineTo(0, y + 35);
+                    textureCtx.fill();
+                }
+            }
+
+            // Borde superior / Detalles Cuello & Mangas
+            textureCtx.fillStyle = accent;
+            textureCtx.fillRect(0, 0, w, 30);
+
+            // Escudo / Logo Escolar (Pecho Izquierdo Frontal)
+            textureCtx.save();
+            textureCtx.fillStyle = accent;
+            textureCtx.beginPath();
+            textureCtx.arc(w * 0.28, h * 0.22, 38, 0, Math.PI * 2);
+            textureCtx.fill();
+            textureCtx.fillStyle = primary;
+            textureCtx.font = "bold 24px sans-serif";
+            textureCtx.textAlign = "center";
+            textureCtx.textBaseline = "middle";
+            textureCtx.fillText("FC", w * 0.28, h * 0.22);
+            textureCtx.restore();
+
+            // Texto Nombre de Institución (Pecho)
+            textureCtx.fillStyle = "#ffffff";
+            textureCtx.font = "900 32px sans-serif";
+            textureCtx.textAlign = "center";
+            textureCtx.fillText(school.toUpperCase(), w * 0.5, h * 0.14);
+
+            // Dorsal / Número Frontal
+            textureCtx.fillStyle = accent;
+            textureCtx.font = "900 140px sans-serif";
+            textureCtx.textAlign = "center";
+            textureCtx.fillText(number, w * 0.5, h * 0.36);
+
+            // --- SECCIÓN DORSAL / ESPALDA (Mapeo parte posterior) ---
+            textureCtx.fillStyle = primary;
+            textureCtx.fillRect(w * 0.05, h * 0.55, w * 0.9, h * 0.42);
+
+            // Nombre Jugador (Espalda)
+            textureCtx.fillStyle = "#ffffff";
+            textureCtx.font = "bold 40px sans-serif";
+            textureCtx.fillText(name.toUpperCase(), w * 0.5, h * 0.65);
+
+            // Número Grande (Espalda)
+            textureCtx.fillStyle = accent;
+            textureCtx.font = "900 200px sans-serif";
+            textureCtx.fillText(number, w * 0.5, h * 0.86);
+
+            // Notificar a Three.js que la textura fue modificada
+            dynamicTexture.needsUpdate = true;
+        }
+
+        function init3DScene() {
+            const container = document.getElementById('canvasContainer');
+            
+            // Escena
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x070a13);
+
+            // Cámara
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 0.1, 3.2);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Orbit Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 1.5;
+            controls.maxDistance = 5;
+            controls.target.set(0, 0, 0);
+
+            // Grupo contenedor de la camiseta
+            shirtGroup = new THREE.Group();
+            scene.add(shirtGroup);
+
+            // Iluminación
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            keyLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            keyLight.position.set(3, 4, 3);
+            keyLight.castShadow = true;
+            scene.add(keyLight);
+
+            fillLight = new THREE.DirectionalLight(0x38bdf8, 0.5);
+            fillLight.position.set(-3, 1, 2);
+            scene.add(fillLight);
+
+            backLight = new THREE.DirectionalLight(0x818cf8, 0.6);
+            backLight.position.set(0, 3, -3);
+            scene.add(backLight);
+
+            // Suelo / Sombra de apoyo
+            const shadowPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(8, 8),
+                new THREE.ShadowMaterial({ opacity: 0.25 })
+            );
+            shadowPlane.rotation.x = -Math.PI / 2;
+            shadowPlane.position.y = -1.1;
+            shadowPlane.receiveShadow = true;
+            scene.add(shadowPlane);
+
+            // Listener para resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function createShirtModel() {
+            // Material principal PBR con la textura dinámica
+            const isFlatShading = document.getElementById('chkFlatShading').checked;
+            
+            const shirtMaterial = new THREE.MeshStandardMaterial({
+                map: dynamicTexture,
+                roughness: 0.5,
+                metalness: 0.1,
+                side: THREE.DoubleSide,
+                flatShading: isFlatShading
+            });
+
+            // Geometría del Torso de la Camiseta
+            const jerseyGeo = new THREE.CylinderGeometry(0.55, 0.5, 1.25, 20, 10, true);
+            
+            // Deformación ligera para dar forma anatómica de camiseta
+            const pos = jerseyGeo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let y = pos.getY(i);
+                let z = pos.getZ(i);
+
+                // Aplanado del pecho/espalda (elipsodidal)
+                z *= 0.65;
+                
+                // Ancho de hombros arriba
+                if (y > 0.3) {
+                    x *= 1.15;
+                }
+                pos.setXYZ(i, x, y, z);
+            }
+            jerseyGeo.computeVertexNormals();
+
+            // Malla de la Camiseta
+            jerseyMesh = new THREE.Mesh(jerseyGeo, shirtMaterial);
+            jerseyMesh.position.y = 0.05;
+            jerseyMesh.castShadow = true;
+            jerseyMesh.receiveShadow = true;
+            shirtGroup.add(jerseyMesh);
+
+            // Mangas (Izquierda y Derecha)
+            const sleeveGeo = new THREE.CylinderGeometry(0.19, 0.21, 0.52, 14, 6);
+            
+            const leftSleeve = new THREE.Mesh(sleeveGeo, shirtMaterial);
+            leftSleeve.position.set(0.58, 0.42, 0);
+            leftSleeve.rotation.z = -Math.PI / 3.8;
+            leftSleeve.castShadow = true;
+            jerseyMesh.add(leftSleeve);
+
+            const rightSleeve = new THREE.Mesh(sleeveGeo, shirtMaterial);
+            rightSleeve.position.set(-0.58, 0.42, 0);
+            rightSleeve.rotation.z = Math.PI / 3.8;
+            rightSleeve.castShadow = true;
+            jerseyMesh.add(rightSleeve);
+
+            // Cuello Deportivo (Torus)
+            const collarGeo = new THREE.TorusGeometry(0.35, 0.045, 10, 24);
+            const collarMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
+            const collar = new THREE.Mesh(collarGeo, collarMat);
+            collar.rotation.x = Math.PI / 2;
+            collar.position.y = 0.66;
+            jerseyMesh.add(collar);
+
+            // --- 3D MESH ANATOMY LAYERS (Aristas y Vértices) ---
+
+            // 1. Capa de Aristas / Edges (Wireframe)
+            const wireframeGeo = new THREE.WireframeGeometry(jerseyGeo);
+            const wireframeMat = new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 1 });
+            wireframeMesh = new THREE.LineSegments(wireframeGeo, wireframeMat);
+            jerseyMesh.add(wireframeMesh);
+
+            // 2. Capa de Vértices (Points)
+            const pointMat = new THREE.PointsMaterial({ color: 0x34d399, size: 0.035 });
+            vertexPointsMesh = new THREE.Points(jerseyGeo, pointMat);
+            jerseyMesh.add(vertexPointsMesh);
+
+            // Actualizar Estadísticas
+            updateMeshStats(jerseyGeo);
+            updateAnatomyToggles();
+        }
+
+        function updateMeshStats(geometry) {
+            const vertCount = geometry.attributes.position.count;
+            const faceCount = geometry.index ? geometry.index.count / 3 : vertCount / 3;
+            const edgeCount = faceCount * 1.5; // Estimado para malla conexa
+
+            document.getElementById('statVertices').innerText = vertCount;
+            document.getElementById('statEdges').innerText = Math.round(edgeCount);
+            document.getElementById('statFaces').innerText = Math.round(faceCount);
+
+            document.getElementById('badgeVerts').innerText = vertCount;
+            document.getElementById('badgeEdges').innerText = Math.round(edgeCount);
+            document.getElementById('badgeFaces').innerText = Math.round(faceCount);
+        }
+
+        function updateAnatomyToggles() {
+            if (!wireframeMesh || !vertexPointsMesh || !jerseyMesh) return;
+
+            wireframeMesh.visible = document.getElementById('chkEdges').checked;
+            vertexPointsMesh.visible = document.getElementById('chkVertices').checked;
+            jerseyMesh.material.visible = document.getElementById('chkFaces').checked;
+            jerseyMesh.material.flatShading = document.getElementById('chkFlatShading').checked;
+            jerseyMesh.material.needsUpdate = true;
+        }
+
+        function setupTabs() {
+            const tabAnatomy = document.getElementById('tabAnatomy');
+            const tabCustom = document.getElementById('tabCustom');
+            const tabUV = document.getElementById('tabUV');
+
+            const sectionAnatomy = document.getElementById('sectionAnatomy');
+            const sectionCustom = document.getElementById('sectionCustom');
+            const sectionUV = document.getElementById('sectionUV');
+
+            function resetTabs() {
+                [tabAnatomy, tabCustom, tabUV].forEach(t => {
+                    t.classList.remove('text-blue-400', 'border-blue-500');
+                    t.classList.add('text-slate-400', 'border-transparent');
+                });
+                [sectionAnatomy, sectionCustom, sectionUV].forEach(s => s.classList.add('hidden'));
+            }
+
+            tabAnatomy.addEventListener('click', () => {
+                resetTabs();
+                tabAnatomy.classList.add('text-blue-400', 'border-blue-500');
+                tabAnatomy.classList.remove('text-slate-400', 'border-transparent');
+                sectionAnatomy.classList.remove('hidden');
+            });
+
+            tabCustom.addEventListener('click', () => {
+                resetTabs();
+                tabCustom.classList.add('text-blue-400', 'border-blue-500');
+                tabCustom.classList.remove('text-slate-400', 'border-transparent');
+                sectionCustom.classList.remove('hidden');
+            });
+
+            tabUV.addEventListener('click', () => {
+                resetTabs();
+                tabUV.classList.add('text-blue-400', 'border-blue-500');
+                tabUV.classList.remove('text-slate-400', 'border-transparent');
+                sectionUV.classList.remove('hidden');
+            });
+        }
+
+        function setupEventListeners() {
+            // Checkboxes de Anatomía
+            ['chkVertices', 'chkEdges', 'chkFaces', 'chkFlatShading'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    updateAnatomyToggles();
+                });
+            });
+
+            // Entradas de color y texto
+            ['primaryColor', 'secondaryColor', 'accentColor', 'playerNumber', 'playerName', 'schoolName', 'patternStyle', 'fabricTexture'].forEach(id => {
+                const el = document.getElementById(id);
+                el.addEventListener('input', () => {
+                    updateTexture();
+                    updateFabricMaterial();
+                    updatePrompt();
+                });
+            });
+
+            // Botones de vista de cámara
+            document.getElementById('btnViewFront').addEventListener('click', () => {
+                autoRotating = false;
+                updateRotateIcon();
+                camera.position.set(0, 0.1, 3.2);
+                controls.target.set(0, 0, 0);
+            });
+
+            document.getElementById('btnViewBack').addEventListener('click', () => {
+                autoRotating = false;
+                updateRotateIcon();
+                camera.position.set(0, 0.1, -3.2);
+                controls.target.set(0, 0, 0);
+            });
+
+            document.getElementById('btnAutoRotate').addEventListener('click', () => {
+                autoRotating = !autoRotating;
+                updateRotateIcon();
+            });
+
+            // Copiar Prompt
+            document.getElementById('btnCopyPrompt').addEventListener('click', () => {
+                const text = document.getElementById('promptTextOutput').innerText;
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+
+                const toast = document.getElementById('copyToast');
+                toast.classList.remove('hidden');
+                setTimeout(() => toast.classList.add('hidden'), 2500);
+            });
+        }
+
+        function updateRotateIcon() {
+            const icon = document.getElementById('rotateIcon');
+            if (autoRotating) {
+                icon.className = 'fa-solid fa-pause';
+            } else {
+                icon.className = 'fa-solid fa-play';
+            }
+        }
+
+        function updateFabricMaterial() {
+            const fabric = document.getElementById('fabricTexture').value;
+            if (!jerseyMesh) return;
+
+            if (fabric === 'transpirable') {
+                jerseyMesh.material.roughness = 0.65;
+                jerseyMesh.material.metalness = 0.05;
+            } else if (fabric === 'sintetico') {
+                jerseyMesh.material.roughness = 0.2;
+                jerseyMesh.material.metalness = 0.25;
+            } else {
+                jerseyMesh.material.roughness = 0.45;
+                jerseyMesh.material.metalness = 0.1;
+            }
+        }
+
+        function updatePrompt() {
+            const primary = document.getElementById('primaryColor').value;
+            const secondary = document.getElementById('secondaryColor').value;
+            const accent = document.getElementById('accentColor').value;
+            const number = document.getElementById('playerNumber').value;
+            const name = document.getElementById('playerName').value;
+            const school = document.getElementById('schoolName').value;
+            const style = document.getElementById('patternStyle').value;
+            const fabric = document.getElementById('fabricTexture').value;
+
+            const prompt = `Camiseta de juego deportivo escolar moderna y ergonómica, diseño exclusivo solo camiseta deportiva, estilo ${style === 'geometric' ? 'Hard-Surface geométrico Low Poly con bordes limpios y facetas poligonales' : 'deportivo dinámico con líneas estilizadas'}, texturas PBR de tela ${fabric === 'transpirable' ? 'transpirable mate con micro-mesh' : 'sintética satinada'}, costuras y patrones textiles claramente definidos, paleta de colores con tono principal ${primary}, secundario ${secondary} y detalles en ${accent}, dorsal con número '${number}', texto de jugador '${name}' y colegio '${school}', Mapeo UV perfectamente proyectado, iluminación de estudio de tres puntos, oclusión ambiental suave, vista frontal y posterior, listo para presentación 3D en alta calidad. Full details, clear mesh topology, centered render.`;
+
+            document.getElementById('promptTextOutput').innerText = prompt;
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvasContainer');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (autoRotating && shirtGroup) {
+                shirtGroup.rotation.y += 0.008;
+            }
+
+            // Animar ligeramente las coordenadas de muestra para la demo interactiva
+            if (shirtGroup) {
+                const t = Date.now() * 0.001;
+                const mockX = (Math.sin(t) * 0.25).toFixed(3);
+                const mockY = (Math.cos(t * 0.8) * 0.35 + 0.1).toFixed(3);
+                const mockZ = (Math.cos(t) * 0.18).toFixed(3);
+                document.getElementById('vertexCoordDisplay').innerHTML = `
+                    <span>X: ${mockX}</span>
+                    <span>Y: ${mockY}</span>
+                    <span>Z: ${mockZ}</span>
+                `;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
